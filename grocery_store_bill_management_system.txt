@@ -1,0 +1,670 @@
+-- ===========================================================================================================================
+-- PROJECT     : GROCERY STORE BILLING MANAGEMENT SYSTEM
+-- DATABASE    : grocery_billing
+-- RDBMS       : MySQL 8.0.16+
+-- ============================================================================================================================  
+
+CREATE DATABASE IF NOT EXISTS grocery_billing;
+USE grocery_billing;
+
+-- ============================================================================================================================
+-- PART 1: DATABASE & TABLE CREATION (7 tables; no window functions)-----
+-- =============================================================================================================================
+CREATE TABLE Categories (
+ category_id INT AUTO_INCREMENT PRIMARY KEY,
+ category_name VARCHAR(80) NOT NULL UNIQUE,
+ description VARCHAR(255)
+);
+
+CREATE TABLE Suppliers (
+ supplier_id INT AUTO_INCREMENT PRIMARY KEY,
+ supplier_name VARCHAR(120) NOT NULL, contact_phone VARCHAR(15),
+ email VARCHAR(120), city VARCHAR(100)
+);
+
+CREATE TABLE Products (
+ product_id INT AUTO_INCREMENT PRIMARY KEY, product_name VARCHAR(120) NOT NULL,
+ category_id INT NOT NULL, supplier_id INT NOT NULL,
+ unit_price DECIMAL(10,2) NOT NULL, cost_price DECIMAL(10,2) NOT NULL,
+ stock_quantity INT UNSIGNED NOT NULL DEFAULT 0,
+ reorder_level INT UNSIGNED NOT NULL DEFAULT 10,
+ expiry_date DATE,
+ CHECK (unit_price >= 0 AND cost_price >= 0),
+ FOREIGN KEY (category_id) REFERENCES Categories(category_id),
+ FOREIGN KEY (supplier_id) REFERENCES Suppliers(supplier_id)
+);
+
+CREATE TABLE Customers (
+ customer_id INT AUTO_INCREMENT PRIMARY KEY, customer_name VARCHAR(120) NOT NULL,
+ phone VARCHAR(15) UNIQUE, email VARCHAR(120), city VARCHAR(100),
+ loyalty_points INT UNSIGNED NOT NULL DEFAULT 0
+);
+
+CREATE TABLE Employees (
+ employee_id INT AUTO_INCREMENT PRIMARY KEY, employee_name VARCHAR(120) NOT NULL,
+ role VARCHAR(50) NOT NULL, hire_date DATE, salary DECIMAL(10,2)
+);
+
+CREATE TABLE Bills (
+ bill_id INT AUTO_INCREMENT PRIMARY KEY, customer_id INT, employee_id INT NOT NULL,
+ bill_date DATE NOT NULL, bill_time TIME NOT NULL,
+ payment_method ENUM('Cash','Card','UPI','Credit') NOT NULL DEFAULT 'Cash',
+ payment_status ENUM('Paid','Pending','Overdue') NOT NULL DEFAULT 'Paid',
+ subtotal DECIMAL(10,2) NOT NULL DEFAULT 0, discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+ tax_amount DECIMAL(10,2) NOT NULL DEFAULT 0, total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+ CHECK (discount_amount >= 0 AND total_amount >= 0),
+ FOREIGN KEY (customer_id) REFERENCES Customers(customer_id),
+ FOREIGN KEY (employee_id) REFERENCES Employees(employee_id)
+);
+
+CREATE TABLE Bill_Items (
+ item_id INT AUTO_INCREMENT PRIMARY KEY, bill_id INT NOT NULL, product_id INT NOT NULL,
+ quantity INT UNSIGNED NOT NULL, unit_price DECIMAL(10,2) NOT NULL,
+ line_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+ CHECK (quantity > 0),
+ FOREIGN KEY (bill_id) REFERENCES Bills(bill_id),
+ FOREIGN KEY (product_id) REFERENCES Products(product_id)
+);
+-- ============================================================================================================================
+-- PART 2: SAMPLE DATA----
+-- ==============================================================================================================================
+INSERT INTO Categories VALUES
+(1,'Grains & Pulses','Rice, dal and staples'),
+(2,'Oils & Spices','Cooking oils and spices'),
+(3,'Dairy','Milk, butter and dairy products'),
+(4,'Bakery & Snacks','Bread and packaged snacks'),
+(5,'Beverages','Tea and soft drinks'),
+(6,'Vegetables','Fresh vegetables'),
+(7,'Household','Soaps and cleaning items');
+
+INSERT INTO Suppliers VALUES
+(1,'Sri Lakshmi Traders','9848000001','lakshmi@traders.in','Visakhapatnam'),
+(2,'Godavari Foods','9848000002','sales@godavarifoods.in','Rajahmundry'),
+(3,'Amul Dairy Distributors','9848000003','amul.vizag@dist.in','Vijayawada'),
+(4,'Coastal Beverages','9848000004','orders@coastalbev.in','Visakhapatnam'),
+(5,'Andhra Fresh Farms','9848000005','farm@andhrafresh.in','Anakapalle'),
+(6,'HomeCare Distributors','9848000006','info@homecare.in','Hyderabad');
+
+INSERT INTO Products VALUES
+(1,'Basmati Rice 5kg',1,1,520.00,450.00,120,30,'2027-06-30'),
+(2,'Toor Dal 1kg',1,1,160.00,135.00,80,25,'2027-03-31'),
+(3,'Sunflower Oil 1L',2,2,140.00,120.00,15,20,'2027-04-30'),
+(4,'Amul Milk 500ml',3,3,28.00,25.00,200,50,'2026-10-26'),
+(5,'Amul Butter 100g',3,3,58.00,50.00,60,20,'2027-01-15'),
+(6,'Britannia Bread',4,2,45.00,38.00,8,15,'2026-10-25'),
+(7,'Lays Chips 52g',4,2,20.00,16.00,150,40,'2027-02-28'),
+(8,'Tata Tea 250g',5,4,130.00,110.00,70,20,'2027-08-31'),
+(9,'Coca-Cola 750ml',5,4,40.00,33.00,90,30,'2027-05-31'),
+(10,'Onion 1kg',6,5,35.00,28.00,100,30,'2026-11-05'),
+(11,'Tomato 1kg',6,5,30.00,22.00,12,25,'2026-10-27'),
+(12,'Dettol Soap 75g',7,6,45.00,36.00,110,30,'2028-12-31');
+
+INSERT INTO Customers VALUES
+(1,'Ravi Kumar','9876500001','ravi.kumar@mail.com','Visakhapatnam',120),
+(2,'Lakshmi Devi','9876500002','lakshmi.devi@mail.com','Visakhapatnam',85),
+(3,'Suresh Babu','9876500003','suresh.babu@mail.com','Vijayawada',40),
+(4,'Anita Rao','9876500004','anita.rao@mail.com','Hyderabad',200),
+(5,'Venkat Rao','9876500005','venkat.rao@mail.com','Visakhapatnam',15),
+(6,'Priya Sharma','9876500006','priya.sharma@mail.com','Anakapalle',60),
+(7,'Mohan Reddy','9876500007','mohan.reddy@mail.com','Visakhapatnam',0),
+(8,'Kavitha N','9876500008','kavitha.n@mail.com','Visakhapatnam',30),
+(9,'Sai Teja','9876500009','sai.teja@mail.com','Guntur',0);
+
+INSERT INTO Employees VALUES
+(1,'Ramesh Naidu','Cashier','2023-01-10',18000.00),
+(2,'Sunita Rao','Cashier','2022-06-15',19000.00),
+(3,'Anil Varma','Store Manager','2020-03-01',35000.00),
+(4,'Deepa Kumari','Cashier','2024-02-20',17500.00),
+(5,'Kiran Raju','Stock Clerk','2023-08-05',16000.00);
+
+-- =============================================================================================================================
+-- Bills: subtotal - discount + 5% tax on (subtotal - discount) = total. NULL customer = walk-in.---
+-- ==============================================================================================================================
+INSERT INTO Bills VALUES
+(1,1,1,'2026-10-13','10:15:00','UPI','Paid',722.00,0.00,36.10,758.10),
+(2,2,2,'2026-10-14','18:30:00','Cash','Paid',590.00,20.00,28.50,598.50),
+(3,NULL,1,'2026-10-15','12:05:00','Cash','Paid',180.00,0.00,9.00,189.00),
+(4,4,4,'2026-10-16','19:45:00','Card','Paid',1342.00,50.00,64.60,1356.60),
+(5,3,2,'2026-10-17','09:20:00','Credit','Overdue',445.00,0.00,22.25,467.25),
+(6,5,1,'2026-10-18','17:10:00','Cash','Paid',201.00,0.00,10.05,211.05),
+(7,6,4,'2026-10-19','11:30:00','Card','Paid',1070.00,40.00,51.50,1081.50),
+(8,NULL,3,'2026-10-20','20:05:00','UPI','Paid',298.00,0.00,14.90,312.90),
+(9,1,2,'2026-10-21','10:40:00','Credit','Pending',334.00,0.00,16.70,350.70),
+(10,8,4,'2026-10-22','18:15:00','UPI','Paid',618.00,30.00,29.40,617.40);
+
+INSERT INTO Bill_Items VALUES
+(1,1,1,1,520.00,520.00),(2,1,4,4,28.00,112.00),(3,1,6,2,45.00,90.00),
+(4,2,2,2,160.00,320.00),(5,2,3,1,140.00,140.00),(6,2,8,1,130.00,130.00),
+(7,3,7,5,20.00,100.00),(8,3,9,2,40.00,80.00),
+(9,4,1,2,520.00,1040.00),(10,4,5,2,58.00,116.00),(11,4,4,2,28.00,56.00),(12,4,8,1,130.00,130.00),
+(13,5,10,3,35.00,105.00),(14,5,11,2,30.00,60.00),(15,5,3,2,140.00,280.00),
+(16,6,6,1,45.00,45.00),(17,6,4,2,28.00,56.00),(18,6,7,3,20.00,60.00),(19,6,9,1,40.00,40.00),
+(20,7,2,3,160.00,480.00),(21,7,1,1,520.00,520.00),(22,7,10,2,35.00,70.00),
+(23,8,9,4,40.00,160.00),(24,8,7,4,20.00,80.00),(25,8,5,1,58.00,58.00),
+(26,9,11,3,30.00,90.00),(27,9,10,2,35.00,70.00),(28,9,4,3,28.00,84.00),(29,9,6,2,45.00,90.00),
+(30,10,8,2,130.00,260.00),(31,10,2,1,160.00,160.00),(32,10,3,1,140.00,140.00),(33,10,5,1,58.00,58.00);
+
+-- ============================================================================================================================
+-- PART 3: INDEXES---
+-- =============================================================================================================================
+CREATE INDEX idx_products_category ON Products(category_id);
+CREATE INDEX idx_products_supplier ON Products(supplier_id);
+CREATE INDEX idx_products_expiry ON Products(expiry_date);
+CREATE INDEX idx_bills_customer_date ON Bills(customer_id,bill_date);
+CREATE INDEX idx_bills_date ON Bills(bill_date);
+CREATE INDEX idx_bills_payment_status ON Bills(payment_status);
+CREATE INDEX idx_items_bill ON Bill_Items(bill_id);
+CREATE INDEX idx_items_product ON Bill_Items(product_id);
+
+-- =============================================================================================================================
+-- PART 4: VIEWS----
+-- =============================================================================================================================
+CREATE OR REPLACE VIEW view_bill_overview AS
+SELECT b.bill_id,b.bill_date,b.bill_time,COALESCE(c.customer_name,'Walk-in') AS customer_name,
+ e.employee_name AS cashier,b.payment_method,b.payment_status,
+ b.subtotal,b.discount_amount,b.tax_amount,b.total_amount
+FROM Bills b LEFT JOIN Customers c ON b.customer_id=c.customer_id
+JOIN Employees e ON b.employee_id=e.employee_id;
+
+CREATE OR REPLACE VIEW view_sales_details AS
+SELECT bi.item_id,b.bill_id,b.bill_date,p.product_name,cat.category_name,
+ bi.quantity,bi.unit_price,bi.line_total
+FROM Bill_Items bi JOIN Bills b ON bi.bill_id=b.bill_id
+JOIN Products p ON bi.product_id=p.product_id
+JOIN Categories cat ON p.category_id=cat.category_id;
+
+CREATE OR REPLACE VIEW view_product_stock_status AS
+SELECT p.product_id,p.product_name,cat.category_name,s.supplier_name,
+ p.stock_quantity,p.reorder_level,
+ CASE WHEN p.stock_quantity<p.reorder_level THEN 'Low Stock' ELSE 'In Stock' END AS stock_status,
+ p.expiry_date,
+ CASE WHEN p.expiry_date IS NULL THEN 'No Expiry'
+      WHEN p.expiry_date<CURDATE() THEN 'Expired'
+      WHEN p.expiry_date<=DATE_ADD(CURDATE(),INTERVAL 7 DAY) THEN 'Expiring Soon'
+      ELSE 'OK' END AS expiry_status
+FROM Products p JOIN Categories cat ON p.category_id=cat.category_id
+JOIN Suppliers s ON p.supplier_id=s.supplier_id;
+
+CREATE OR REPLACE VIEW view_category_sales_summary AS
+SELECT cat.category_id,cat.category_name,
+ COALESCE(SUM(bi.quantity),0) AS units_sold,
+ COALESCE(SUM(bi.line_total),0) AS revenue
+FROM Categories cat LEFT JOIN Products p ON cat.category_id=p.category_id
+LEFT JOIN Bill_Items bi ON p.product_id=bi.product_id
+GROUP BY cat.category_id,cat.category_name;
+
+-- ======================================================================================================================
+-- PART 5: STORED PROCEDURES---
+-- =======================================================================================================================
+DROP PROCEDURE IF EXISTS sp_bills_by_customer;
+DELIMITER $$
+CREATE PROCEDURE sp_bills_by_customer(IN p_customer_id INT)
+BEGIN
+ SELECT bill_id,bill_date,bill_time,payment_method,payment_status,subtotal,discount_amount,tax_amount,total_amount
+ FROM Bills WHERE customer_id=p_customer_id ORDER BY bill_date DESC,bill_time DESC;
+END $$
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS sp_product_sales_summary;
+DELIMITER $$
+CREATE PROCEDURE sp_product_sales_summary(IN p_product_id INT)
+BEGIN
+ SELECT p.product_name,COUNT(DISTINCT bi.bill_id) AS bills_count,
+ COALESCE(SUM(bi.quantity),0) AS units_sold,
+ COALESCE(SUM(bi.line_total),0) AS revenue,
+ p.stock_quantity AS current_stock
+ FROM Products p LEFT JOIN Bill_Items bi ON p.product_id=bi.product_id
+ WHERE p.product_id=p_product_id GROUP BY p.product_id,p.product_name,p.stock_quantity;
+END $$
+DELIMITER ;
+-- =========================================================================================================================
+-- Adds an item using the product's current price, then recalculates the bill totals (5% tax).---
+-- ==========================================================================================================================
+DROP PROCEDURE IF EXISTS sp_add_bill_item;
+DELIMITER $$
+CREATE PROCEDURE sp_add_bill_item(IN p_bill_id INT,IN p_product_id INT,IN p_quantity INT)
+BEGIN
+ DECLARE v_price DECIMAL(10,2) DEFAULT NULL;
+ SELECT unit_price INTO v_price FROM Products WHERE product_id=p_product_id;
+ IF v_price IS NULL THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Product not found';
+ ELSEIF p_quantity<=0 THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Quantity must be greater than zero';
+ ELSE
+  INSERT INTO Bill_Items(bill_id,product_id,quantity,unit_price)
+  VALUES(p_bill_id,p_product_id,p_quantity,v_price);
+  UPDATE Bills SET subtotal=(SELECT SUM(line_total) FROM Bill_Items WHERE bill_id=p_bill_id)
+  WHERE bill_id=p_bill_id;
+  UPDATE Bills SET tax_amount=ROUND((subtotal-discount_amount)*0.05,2),
+   total_amount=subtotal-discount_amount+ROUND((subtotal-discount_amount)*0.05,2)
+  WHERE bill_id=p_bill_id;
+ END IF;
+END $$
+DELIMITER ;
+
+-- ===========================================================================================================================
+-- PART 6: TRIGGERS---
+-- ============================================================================================================================
+CREATE TABLE IF NOT EXISTS price_audit (
+ audit_id INT AUTO_INCREMENT PRIMARY KEY,product_id INT NOT NULL,
+ action_type VARCHAR(10) NOT NULL,old_price DECIMAL(10,2),new_price DECIMAL(10,2),
+ changed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+DROP TRIGGER IF EXISTS trg_validate_bill_item_insert;
+DELIMITER $$
+CREATE TRIGGER trg_validate_bill_item_insert BEFORE INSERT ON Bill_Items
+FOR EACH ROW
+BEGIN
+ DECLARE v_stock INT DEFAULT NULL;
+ SELECT stock_quantity INTO v_stock FROM Products WHERE product_id=NEW.product_id;
+ IF NEW.quantity<=0 THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Quantity must be greater than zero';
+ ELSEIF v_stock IS NULL OR v_stock<NEW.quantity THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Insufficient stock for this product';
+ END IF;
+ SET NEW.line_total=NEW.quantity*NEW.unit_price;
+END $$
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_reduce_stock_after_sale;
+DELIMITER $$
+CREATE TRIGGER trg_reduce_stock_after_sale AFTER INSERT ON Bill_Items
+FOR EACH ROW
+BEGIN
+ UPDATE Products SET stock_quantity=stock_quantity-NEW.quantity WHERE product_id=NEW.product_id;
+END $$
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_audit_product_insert;
+DELIMITER $$
+CREATE TRIGGER trg_audit_product_insert AFTER INSERT ON Products
+FOR EACH ROW
+BEGIN
+ INSERT INTO price_audit(product_id,action_type,old_price,new_price)
+ VALUES(NEW.product_id,'INSERT',NULL,NEW.unit_price);
+END $$
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_audit_product_price_update;
+DELIMITER $$
+CREATE TRIGGER trg_audit_product_price_update AFTER UPDATE ON Products
+FOR EACH ROW
+BEGIN
+ IF OLD.unit_price<>NEW.unit_price THEN
+  INSERT INTO price_audit(product_id,action_type,old_price,new_price)
+  VALUES(NEW.product_id,'UPDATE',OLD.unit_price,NEW.unit_price);
+ END IF;
+END $$
+DELIMITER ;
+
+DROP TRIGGER IF EXISTS trg_audit_product_delete;
+DELIMITER $$
+CREATE TRIGGER trg_audit_product_delete AFTER DELETE ON Products
+FOR EACH ROW
+BEGIN
+ INSERT INTO price_audit(product_id,action_type,old_price,new_price)
+ VALUES(OLD.product_id,'DELETE',OLD.unit_price,NULL);
+END $$
+DELIMITER ;
+
+-- ===========================================================================================================================
+-- PART 7: QUERY BANK - LEVEL 1: SIMPLE QUERIES (Q1-Q3)
+-- ============================================================================================================================
+-- Q1 Display the ID, name, and city of all customers.
+
+SELECT customer_id,customer_name,city FROM Customers;
+
++-------------+---------------+---------------+
+| customer_id | customer_name | city          |
++-------------+---------------+---------------+
+|           1 | Ravi Kumar    | Visakhapatnam |
+|           2 | Lakshmi Devi  | Visakhapatnam |
+|           3 | Suresh Babu   | Vijayawada    |
+|           4 | Anita Rao     | Hyderabad     |
+|           5 | Venkat Rao    | Visakhapatnam |
+|           6 | Priya Sharma  | Anakapalle    |
+|           7 | Mohan Reddy   | Visakhapatnam |
+|           8 | Kavitha N     | Visakhapatnam |
+|           9 | Sai Teja      | Guntur        |
++-------------+---------------+---------------+
+
+
+-- Q2 Display bills on which a discount was given.
+
+SELECT bill_id,bill_date,subtotal,discount_amount,total_amount FROM Bills WHERE discount_amount>0;
+
++---------+------------+----------+-----------------+--------------+
+| bill_id | bill_date  | subtotal | discount_amount | total_amount |
++---------+------------+----------+-----------------+--------------+
+|       2 | 2026-10-14 |   590.00 |           20.00 |       598.50 |
+|       4 | 2026-10-16 |  1342.00 |           50.00 |      1356.60 |
+|       7 | 2026-10-19 |  1070.00 |           40.00 |      1081.50 |
+|      10 | 2026-10-22 |   618.00 |           30.00 |       617.40 |
++---------+------------+----------+-----------------+--------------+
+
+
+-- Q3 Display all bills, ordered from newest to oldest.
+
+SELECT bill_id,bill_date,bill_time,payment_method,total_amount FROM Bills ORDER BY bill_date DESC,bill_time DESC;
+
++---------+------------+-----------+----------------+--------------+
+| bill_id | bill_date  | bill_time | payment_method | total_amount |
++---------+------------+-----------+----------------+--------------+
+|      10 | 2026-10-22 | 18:15:00  | UPI            |       617.40 |
+|       9 | 2026-10-21 | 10:40:00  | Credit         |       350.70 |
+|       8 | 2026-10-20 | 20:05:00  | UPI            |       312.90 |
+|       7 | 2026-10-19 | 11:30:00  | Card           |      1081.50 |
+|       6 | 2026-10-18 | 17:10:00  | Cash           |       211.05 |
+|       5 | 2026-10-17 | 09:20:00  | Credit         |       467.25 |
+|       4 | 2026-10-16 | 19:45:00  | Card           |      1356.60 |
+|       3 | 2026-10-15 | 12:05:00  | Cash           |       189.00 |
+|       2 | 2026-10-14 | 18:30:00  | Cash           |       598.50 |
+|       1 | 2026-10-13 | 10:15:00  | UPI            |       758.10 |
++---------+------------+-----------+----------------+--------------+
+
+-- =========================================================================================================================
+-- PART 8: QUERY BANK - LEVEL 2: INTERMEDIATE QUERIES (Q4-Q6)---
+-- ==========================================================================================================================
+-- Q4 Count the total number of bills for each payment method and display the highest counts first.
+
+SELECT payment_method,COUNT(*) AS total_bills FROM Bills GROUP BY payment_method ORDER BY total_bills DESC;
+
++----------------+-------------+
+| payment_method | total_bills |
++----------------+-------------+
+| UPI            |           3 |
+| Cash           |           3 |
+| Card           |           2 |
+| Credit         |           2 |
++----------------+-------------+
+
+
+-- Q5 Find the average selling price and total stock for each category, including categories with no products.
+
+SELECT cat.category_name,ROUND(AVG(p.unit_price),2) AS avg_price,COALESCE(SUM(p.stock_quantity),0) AS total_stock
+FROM Categories cat LEFT JOIN Products p ON cat.category_id=p.category_id
+GROUP BY cat.category_id,cat.category_name ORDER BY avg_price DESC;
+
++-----------------+-----------+-------------+
+| category_name   | avg_price | total_stock |
++-----------------+-----------+-------------+
+| Grains & Pulses |    340.00 |         200 |
+| Oils & Spices   |    140.00 |          15 |
+| Beverages       |     85.00 |         160 |
+| Household       |     45.00 |         110 |
+| Dairy           |     43.00 |         260 |
+| Bakery & Snacks |     32.50 |         158 |
+| Vegetables      |     32.50 |         112 |
++-----------------+-----------+-------------+
+
+
+-- Q6 Display each customer's number of bills, including customers with no bills.
+
+SELECT c.customer_name,COUNT(b.bill_id) AS bill_count
+FROM Customers c LEFT JOIN Bills b ON c.customer_id=b.customer_id
+GROUP BY c.customer_id,c.customer_name ORDER BY bill_count DESC;
+
++---------------+------------+
+| customer_name | bill_count |
++---------------+------------+
+| Ravi Kumar    |          2 |
+| Lakshmi Devi  |          1 |
+| Suresh Babu   |          1 |
+| Anita Rao     |          1 |
+| Venkat Rao    |          1 |
+| Priya Sharma  |          1 |
+| Kavitha N     |          1 |
+| Mohan Reddy   |          0 |
+| Sai Teja      |          0 |
++---------------+------------+
+
+-- ============================================================================================================================
+-- PART 9: QUERY BANK - LEVEL 3: ADVANCED QUERIES (Q7-Q9)---
+-- =============================================================================================================================
+-- Q7 Find the top five best-selling products by quantity sold.
+
+SELECT p.product_name,SUM(bi.quantity) AS units_sold
+FROM Products p JOIN Bill_Items bi ON p.product_id=bi.product_id
+GROUP BY p.product_id,p.product_name ORDER BY units_sold DESC LIMIT 5;
+
++-----------------+------------+
+| product_name    | units_sold |
++-----------------+------------+
+| Lays Chips 52g  |         12 |
+| Amul Milk 500ml |         11 |
+| Coca-Cola 750ml |          7 |
+| Onion 1kg       |          7 |
+| Toor Dal 1kg    |          6 |
++-----------------+------------+
+
+
+-- Q8 Find categories whose total sales revenue is greater than 500.
+
+SELECT cat.category_name,SUM(bi.line_total) AS revenue
+FROM Categories cat JOIN Products p ON cat.category_id=p.category_id
+JOIN Bill_Items bi ON p.product_id=bi.product_id
+GROUP BY cat.category_id,cat.category_name HAVING SUM(bi.line_total)>500 ORDER BY revenue DESC;
+
++-----------------+---------+
+| category_name   | revenue |
++-----------------+---------+
+| Grains & Pulses | 3040.00 |
+| Beverages       |  800.00 |
+| Oils & Spices   |  560.00 |
+| Dairy           |  540.00 |
++-----------------+---------+
+
+
+-- Q9 Display detailed bill information, including customer, cashier, product, quantity, line total, and payment method.
+
+SELECT b.bill_id,b.bill_date,COALESCE(c.customer_name,'Walk-in') AS customer_name,e.employee_name AS cashier,
+ p.product_name,bi.quantity,bi.line_total,b.payment_method
+FROM Bills b JOIN Bill_Items bi ON b.bill_id=bi.bill_id
+JOIN Products p ON bi.product_id=p.product_id
+JOIN Employees e ON b.employee_id=e.employee_id
+LEFT JOIN Customers c ON b.customer_id=c.customer_id ORDER BY b.bill_date DESC,b.bill_id;
+
++---------+------------+---------------+--------------+------------------+----------+------------+----------------+
+| bill_id | bill_date  | customer_name | cashier      | product_name     | quantity | line_total | payment_method |
++---------+------------+---------------+--------------+------------------+----------+------------+----------------+
+|      10 | 2026-10-22 | Kavitha N     | Deepa Kumari | Amul Butter 100g |        1 |      58.00 | UPI            |
+|      10 | 2026-10-22 | Kavitha N     | Deepa Kumari | Sunflower Oil 1L |        1 |     140.00 | UPI            |
+|      10 | 2026-10-22 | Kavitha N     | Deepa Kumari | Toor Dal 1kg     |        1 |     160.00 | UPI            |
+|      10 | 2026-10-22 | Kavitha N     | Deepa Kumari | Tata Tea 250g    |        2 |     260.00 | UPI            |
+|       9 | 2026-10-21 | Ravi Kumar    | Sunita Rao   | Britannia Bread  |        2 |      90.00 | Credit         |
+|       9 | 2026-10-21 | Ravi Kumar    | Sunita Rao   | Amul Milk 500ml  |        3 |      84.00 | Credit         |
+|       9 | 2026-10-21 | Ravi Kumar    | Sunita Rao   | Onion 1kg        |        2 |      70.00 | Credit         |
+|       9 | 2026-10-21 | Ravi Kumar    | Sunita Rao   | Tomato 1kg       |        3 |      90.00 | Credit         |
+|       8 | 2026-10-20 | Walk-in       | Anil Varma   | Amul Butter 100g |        1 |      58.00 | UPI            |
+|       8 | 2026-10-20 | Walk-in       | Anil Varma   | Lays Chips 52g   |        4 |      80.00 | UPI            |
+|       8 | 2026-10-20 | Walk-in       | Anil Varma   | Coca-Cola 750ml  |        4 |     160.00 | UPI            |
+|       7 | 2026-10-19 | Priya Sharma  | Deepa Kumari | Toor Dal 1kg     |        3 |     480.00 | Card           |
+|       7 | 2026-10-19 | Priya Sharma  | Deepa Kumari | Onion 1kg        |        2 |      70.00 | Card           |
+|       7 | 2026-10-19 | Priya Sharma  | Deepa Kumari | Basmati Rice 5kg |        1 |     520.00 | Card           |
+|       6 | 2026-10-18 | Venkat Rao    | Ramesh Naidu | Coca-Cola 750ml  |        1 |      40.00 | Cash           |
+|       6 | 2026-10-18 | Venkat Rao    | Ramesh Naidu | Britannia Bread  |        1 |      45.00 | Cash           |
+|       6 | 2026-10-18 | Venkat Rao    | Ramesh Naidu | Amul Milk 500ml  |        2 |      56.00 | Cash           |
+|       6 | 2026-10-18 | Venkat Rao    | Ramesh Naidu | Lays Chips 52g   |        3 |      60.00 | Cash           |
+|       5 | 2026-10-17 | Suresh Babu   | Sunita Rao   | Sunflower Oil 1L |        2 |     280.00 | Credit         |
+|       5 | 2026-10-17 | Suresh Babu   | Sunita Rao   | Tomato 1kg       |        2 |      60.00 | Credit         |
+|       5 | 2026-10-17 | Suresh Babu   | Sunita Rao   | Onion 1kg        |        3 |     105.00 | Credit         |
+|       4 | 2026-10-16 | Anita Rao     | Deepa Kumari | Tata Tea 250g    |        1 |     130.00 | Card           |
+|       4 | 2026-10-16 | Anita Rao     | Deepa Kumari | Amul Milk 500ml  |        2 |      56.00 | Card           |
+|       4 | 2026-10-16 | Anita Rao     | Deepa Kumari | Amul Butter 100g |        2 |     116.00 | Card           |
+|       4 | 2026-10-16 | Anita Rao     | Deepa Kumari | Basmati Rice 5kg |        2 |    1040.00 | Card           |
+|       3 | 2026-10-15 | Walk-in       | Ramesh Naidu | Coca-Cola 750ml  |        2 |      80.00 | Cash           |
+|       3 | 2026-10-15 | Walk-in       | Ramesh Naidu | Lays Chips 52g   |        5 |     100.00 | Cash           |
+|       2 | 2026-10-14 | Lakshmi Devi  | Sunita Rao   | Tata Tea 250g    |        1 |     130.00 | Cash           |
+|       2 | 2026-10-14 | Lakshmi Devi  | Sunita Rao   | Sunflower Oil 1L |        1 |     140.00 | Cash           |
+|       2 | 2026-10-14 | Lakshmi Devi  | Sunita Rao   | Toor Dal 1kg     |        2 |     320.00 | Cash           |
+|       1 | 2026-10-13 | Ravi Kumar    | Ramesh Naidu | Amul Milk 500ml  |        4 |     112.00 | UPI            |
+|       1 | 2026-10-13 | Ravi Kumar    | Ramesh Naidu | Britannia Bread  |        2 |      90.00 | UPI            |
+|       1 | 2026-10-13 | Ravi Kumar    | Ramesh Naidu | Basmati Rice 5kg |        1 |     520.00 | UPI            |
++---------+------------+---------------+--------------+------------------+----------+------------+----------------+
+
+-- ===========================================================================================================================--
+-- PART 10: QUERY BANK - QUERIES (Q10-Q21)---
+-- ============================================================================================================================
+-- Q10 Display bills where the total amount is greater than 500, sorted by total amount in descending order.
+
+SELECT bill_id,bill_date,bill_time,total_amount FROM Bills WHERE total_amount>500 ORDER BY total_amount DESC;
++---------+------------+-----------+--------------+
+| bill_id | bill_date  | bill_time | total_amount |
++---------+------------+-----------+--------------+
+|       4 | 2026-10-16 | 19:45:00  |      1356.60 |
+|       7 | 2026-10-19 | 11:30:00  |      1081.50 |
+|       1 | 2026-10-13 | 10:15:00  |       758.10 |
+|      10 | 2026-10-22 | 18:15:00  |       617.40 |
+|       2 | 2026-10-14 | 18:30:00  |       598.50 |
++---------+------------+-----------+--------------+
+
+
+-- Q11 Calculate the total revenue, total discounts, and total tax across all bills.
+
+SELECT SUM(total_amount) AS total_revenue,SUM(discount_amount) AS total_discounts,SUM(tax_amount) AS total_tax FROM Bills;
+
++---------------+-----------------+-----------+
+| total_revenue | total_discounts | total_tax |
++---------------+-----------------+-----------+
+|       5943.00 |          140.00 |    283.00 |
++---------------+-----------------+-----------+
+
+
+-- Q12 Display bills paid by UPI, including their dates and customers.
+
+SELECT b.bill_id,b.bill_date,COALESCE(c.customer_name,'Walk-in') AS customer_name,b.payment_method,b.total_amount
+FROM Bills b LEFT JOIN Customers c ON b.customer_id=c.customer_id WHERE b.payment_method='UPI';
+
++---------+------------+---------------+----------------+--------------+
+| bill_id | bill_date  | customer_name | payment_method | total_amount |
++---------+------------+---------------+----------------+--------------+
+|       1 | 2026-10-13 | Ravi Kumar    | UPI            |       758.10 |
+|       8 | 2026-10-20 | Walk-in       | UPI            |       312.90 |
+|      10 | 2026-10-22 | Kavitha N     | UPI            |       617.40 |
++---------+------------+---------------+----------------+--------------+
+
+-- Q13 Calculate the units sold and total revenue for each product.
+
+SELECT p.product_name,SUM(bi.quantity) AS units_sold,SUM(bi.line_total) AS revenue
+FROM Products p JOIN Bill_Items bi ON p.product_id=bi.product_id
+GROUP BY p.product_id,p.product_name ORDER BY revenue DESC;
+
++------------------+------------+---------+
+| product_name     | units_sold | revenue |
++------------------+------------+---------+
+| Basmati Rice 5kg |          4 | 2080.00 |
+| Toor Dal 1kg     |          6 |  960.00 |
+| Sunflower Oil 1L |          4 |  560.00 |
+| Tata Tea 250g    |          4 |  520.00 |
+| Amul Milk 500ml  |         11 |  308.00 |
+| Coca-Cola 750ml  |          7 |  280.00 |
+| Onion 1kg        |          7 |  245.00 |
+| Lays Chips 52g   |         12 |  240.00 |
+| Amul Butter 100g |          4 |  232.00 |
+| Britannia Bread  |          5 |  225.00 |
+| Tomato 1kg       |          5 |  150.00 |
++------------------+------------+---------+
+
+-- Q14 Display all pending and overdue bills, with the highest totals first.
+
+SELECT bill_id,customer_id,bill_date,payment_method,payment_status,total_amount
+FROM Bills WHERE payment_status IN ('Pending','Overdue') ORDER BY total_amount DESC;
+
++---------+-------------+------------+----------------+----------------+--------------+
+| bill_id | customer_id | bill_date  | payment_method | payment_status | total_amount |
++---------+-------------+------------+----------------+----------------+--------------+
+|       5 |           3 | 2026-10-17 | Credit         | Overdue        |       467.25 |
+|       9 |           1 | 2026-10-21 | Credit         | Pending        |       350.70 |
++---------+-------------+------------+----------------+----------------+--------------+
+
+
+-- Q15 Find products whose names begin with Amul.
+
+SELECT product_name,unit_price,stock_quantity FROM Products WHERE product_name LIKE 'Amull%' ORDER BY product_name;
+
+Empty set
+
+-- Q16 Display all products in the Dairy category, including price, stock, and expiry date.
+
+SELECT p.product_id,p.product_name,p.unit_price,p.stock_quantity,p.expiry_date
+FROM Products p JOIN Categories cat ON p.category_id=cat.category_id WHERE cat.category_name='Dairy';
+
++------------+------------------+------------+----------------+-------------+
+| product_id | product_name     | unit_price | stock_quantity | expiry_date |
++------------+------------------+------------+----------------+-------------+
+|          4 | Amul Milk 500ml  |      28.00 |            200 | 2026-10-26  |
+|          5 | Amul Butter 100g |      58.00 |             60 | 2027-01-15  |
++------------+------------------+------------+----------------+-------------+
+
+-- Q17 Find products that have never been sold.
+
+SELECT p.product_id,p.product_name FROM Products p LEFT JOIN Bill_Items bi ON p.product_id=bi.product_id WHERE bi.item_id IS NULL;
+
++------------+-----------------+
+| product_id | product_name    |
++------------+-----------------+
+|         12 | Dettol Soap 75g |
++------------+-----------------+
+
+-- Q18 Calculate the average bill amount for each payment method.
+
+SELECT payment_method,ROUND(AVG(total_amount),2) AS avg_bill_amount FROM Bills GROUP BY payment_method ORDER BY avg_bill_amount DESC;
+
++----------------+-----------------+
+| payment_method | avg_bill_amount |
++----------------+-----------------+
+| Card           |         1219.05 |
+| UPI            |          562.80 |
+| Credit         |          408.98 |
+| Cash           |          332.85 |
++----------------+-----------------+
+
+-- Q19 Identify products whose selling price exceeds the cost price by more than 20 percent.
+
+SELECT product_name,cost_price,unit_price,ROUND((unit_price-cost_price)/cost_price*100,2) AS margin_percent
+FROM Products WHERE (unit_price-cost_price)/cost_price*100>20 ORDER BY margin_percent DESC;
+
++-----------------+------------+------------+----------------+
+| product_name    | cost_price | unit_price | margin_percent |
++-----------------+------------+------------+----------------+
+| Tomato 1kg      |      22.00 |      30.00 |          36.36 |
+| Lays Chips 52g  |      16.00 |      20.00 |          25.00 |
+| Onion 1kg       |      28.00 |      35.00 |          25.00 |
+| Dettol Soap 75g |      36.00 |      45.00 |          25.00 |
+| Coca-Cola 750ml |      33.00 |      40.00 |          21.21 |
++-----------------+------------+------------+----------------+
+
+-- Q20 Count the bills and total sales for each customer city, including cities with zero bills.
+
+SELECT c.city,COUNT(b.bill_id) AS total_bills,COALESCE(SUM(b.total_amount),0) AS total_sales
+FROM Customers c LEFT JOIN Bills b ON c.customer_id=b.customer_id
+GROUP BY c.city ORDER BY total_sales DESC;
+
++---------------+-------------+-------------+
+| city          | total_bills | total_sales |
++---------------+-------------+-------------+
+| Visakhapatnam |           5 |     2535.75 |
+| Hyderabad     |           1 |     1356.60 |
+| Anakapalle    |           1 |     1081.50 |
+| Vijayawada    |           1 |      467.25 |
+| Guntur        |           0 |        0.00 |
++---------------+-------------+-------------+
+
+-- Q21 Generate an overall summary of bills, units sold, revenue, discounts, customers, and low-stock products.
+
+SELECT (SELECT COUNT(*) FROM Bills) AS total_bills,
+ (SELECT COALESCE(SUM(quantity),0) FROM Bill_Items) AS total_units_sold,
+ (SELECT COALESCE(SUM(total_amount),0) FROM Bills) AS total_revenue,
+ (SELECT COALESCE(SUM(discount_amount),0) FROM Bills) AS total_discounts,
+ (SELECT COUNT(*) FROM Customers) AS total_customers,
+ (SELECT COUNT(*) FROM Products WHERE stock_quantity<reorder_level) AS low_stock_products;
+
++-------------+------------------+---------------+-----------------+-----------------+--------------------+
+| total_bills | total_units_sold | total_revenue | total_discounts | total_customers | low_stock_products |
++-------------+------------------+---------------+-----------------+-----------------+--------------------+
+|          10 |               69 |       5943.00 |          140.00 |               9 |                  3 |
++-------------+------------------+---------------+-----------------+-----------------+--------------------+
+
+ Empty set
+
